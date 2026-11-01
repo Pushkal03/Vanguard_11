@@ -1,0 +1,6 @@
+{
+  "name": "Vanguard 11 — AI Accountability & Lockdown Partner",
+  "description": "An uncompromising AI accountability partner and focus lockdown workspace for 11th-standard aspirants—featuring instruction-driven timetable generation, context-locked app gatekeeping, camera presence monitoring, homework vault, and XP progression.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

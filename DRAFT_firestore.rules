@@ -1,0 +1,324 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Blueprint Validation Helper 1: StudentWorkspace
+    function isValidStudentWorkspace(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'studentName',
+          'classStandard',
+          'targetExam',
+          'pairingCode',
+          'parentIds',
+          'deviceIds',
+          'deviceNames',
+          'isLockdownActive',
+          'cameraVerified',
+          'cameraConfidence',
+          'xpPoints',
+          'streakDays',
+          'activeBlockTitle',
+          'activeBlockCategory',
+          'completedTasksCount',
+          'totalTasksCount',
+          'violationsCount',
+          'latestFileTitle',
+          'latestFileSubject',
+          'latestFileContent',
+          'latestMomentText',
+          'parentEncouragement',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'studentName',
+          'classStandard',
+          'targetExam',
+          'pairingCode',
+          'parentIds',
+          'deviceIds',
+          'deviceNames',
+          'isLockdownActive',
+          'cameraVerified',
+          'cameraConfidence',
+          'xpPoints',
+          'streakDays',
+          'activeBlockTitle',
+          'activeBlockCategory',
+          'completedTasksCount',
+          'totalTasksCount',
+          'violationsCount',
+          'latestFileTitle',
+          'latestFileSubject',
+          'latestFileContent',
+          'latestMomentText',
+          'parentEncouragement',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 80 &&
+        data.classStandard is string && data.classStandard.size() >= 1 && data.classStandard.size() <= 50 &&
+        data.classStandard in ['10th Standard', '11th Standard', '12th Standard', 'Dropper / Gap Year'] &&
+        data.targetExam is string && data.targetExam.size() >= 1 && data.targetExam.size() <= 80 &&
+        data.targetExam in ['JEE Main & Advanced', 'NEET UG', 'BITSAT & Olympiads', 'Computer Science & SAT', 'Board Exams Excellence'] &&
+        data.pairingCode is string && data.pairingCode.size() >= 4 && data.pairingCode.size() <= 16 &&
+        data.pairingCode.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.parentIds is list && data.parentIds.size() <= 2 &&
+        (data.parentIds.size() == 0 || (data.parentIds[0] is string && data.parentIds[0].size() >= 1 && data.parentIds[0].size() <= 128)) &&
+        data.deviceIds is list && data.deviceIds.size() <= 5 &&
+        (data.deviceIds.size() == 0 || (data.deviceIds[0] is string && data.deviceIds[0].size() >= 1 && data.deviceIds[0].size() <= 128)) &&
+        data.deviceNames is list && data.deviceNames.size() <= 5 &&
+        (data.deviceNames.size() == 0 || (data.deviceNames[0] is string && data.deviceNames[0].size() >= 1 && data.deviceNames[0].size() <= 80)) &&
+        data.isLockdownActive is bool &&
+        data.cameraVerified is bool &&
+        data.cameraConfidence is number && data.cameraConfidence >= 0 && data.cameraConfidence <= 100 &&
+        data.xpPoints is number && data.xpPoints >= 0 && data.xpPoints <= 1000000 &&
+        data.streakDays is number && data.streakDays >= 0 && data.streakDays <= 3650 &&
+        data.activeBlockTitle is string && data.activeBlockTitle.size() >= 1 && data.activeBlockTitle.size() <= 160 &&
+        data.activeBlockCategory is string && data.activeBlockCategory.size() >= 1 && data.activeBlockCategory.size() <= 40 &&
+        data.activeBlockCategory in ['study', 'coding', 'break', 'revision'] &&
+        data.completedTasksCount is number && data.completedTasksCount >= 0 && data.completedTasksCount <= 500 &&
+        data.totalTasksCount is number && data.totalTasksCount >= 0 && data.totalTasksCount <= 500 &&
+        data.violationsCount is number && data.violationsCount >= 0 && data.violationsCount <= 10000 &&
+        data.latestFileTitle is string && data.latestFileTitle.size() >= 1 && data.latestFileTitle.size() <= 160 &&
+        data.latestFileSubject is string && data.latestFileSubject.size() >= 1 && data.latestFileSubject.size() <= 80 &&
+        data.latestFileContent is string && data.latestFileContent.size() >= 1 && data.latestFileContent.size() <= 8000 &&
+        data.latestMomentText is string && data.latestMomentText.size() >= 1 && data.latestMomentText.size() <= 300 &&
+        data.parentEncouragement is string && data.parentEncouragement.size() <= 300 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Blueprint Validation Helper 2: StudentMoment
+    function isValidStudentMoment(data) {
+      return data.keys().hasAll([
+          'workspaceId',
+          'authorId',
+          'eventType',
+          'summary',
+          'deviceLabel',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'workspaceId',
+          'authorId',
+          'eventType',
+          'summary',
+          'deviceLabel',
+          'createdAt'
+        ]) &&
+        isValidId(data.workspaceId) &&
+        isValidId(data.authorId) &&
+        data.authorId == request.auth.uid &&
+        data.eventType is string && data.eventType.size() >= 1 && data.eventType.size() <= 40 &&
+        data.eventType in ['lockdown', 'camera', 'file_upload', 'task_complete', 'violation', 'device_sync', 'parent_note'] &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 300 &&
+        data.deviceLabel is string && data.deviceLabel.size() >= 1 && data.deviceLabel.size() <= 80 &&
+        data.createdAt is timestamp;
+    }
+
+    // Blueprint Validation Helper 3: SyncedStudyFile
+    function isValidSyncedStudyFile(data) {
+      return data.keys().hasAll([
+          'workspaceId',
+          'ownerId',
+          'name',
+          'subject',
+          'sizeLabel',
+          'contentPreview',
+          'notes',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'workspaceId',
+          'ownerId',
+          'name',
+          'subject',
+          'sizeLabel',
+          'contentPreview',
+          'notes',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.workspaceId) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 160 &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80 &&
+        data.sizeLabel is string && data.sizeLabel.size() >= 1 && data.sizeLabel.size() <= 40 &&
+        data.contentPreview is string && data.contentPreview.size() >= 1 && data.contentPreview.size() <= 9000 &&
+        data.notes is string && data.notes.size() <= 4000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Master Gate Helper for Subcollections
+    function isWorkspaceOwnerOrLinkedParent(workspaceId) {
+      let ws = get(/databases/$(database)/documents/workspaces/$(workspaceId)).data;
+      return ws.ownerId == request.auth.uid || request.auth.uid in ws.parentIds;
+    }
+
+    function isWorkspaceOwner(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid;
+    }
+
+    // Collection 1: /workspaces/{workspaceId}
+    match /workspaces/{workspaceId} {
+      allow get: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        (existing().ownerId == request.auth.uid || request.auth.uid in existing().parentIds);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        workspaceId == request.auth.uid &&
+        isValidStudentWorkspace(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidStudentWorkspace(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Student owner updates workspace telemetry, lockdown state, devices, or files
+          (
+            existing().ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'studentName',
+              'classStandard',
+              'targetExam',
+              'pairingCode',
+              'parentIds',
+              'deviceIds',
+              'deviceNames',
+              'isLockdownActive',
+              'cameraVerified',
+              'cameraConfidence',
+              'xpPoints',
+              'streakDays',
+              'activeBlockTitle',
+              'activeBlockCategory',
+              'completedTasksCount',
+              'totalTasksCount',
+              'violationsCount',
+              'latestFileTitle',
+              'latestFileSubject',
+              'latestFileContent',
+              'latestMomentText',
+              'parentEncouragement',
+              'updatedAt'
+            ])
+          ) ||
+          // Action 2: Linked parent (up to 2 parents max) registers or sends encouragement note
+          // Red Team Patch: Ensures an existing parent is never overwritten when a 2nd parent joins.
+          (
+            request.auth.uid in incoming().parentIds &&
+            (
+              (request.auth.uid in existing().parentIds && incoming().parentIds == existing().parentIds) ||
+              (
+                !(request.auth.uid in existing().parentIds) &&
+                existing().parentIds.size() < 2 &&
+                incoming().parentIds.size() == existing().parentIds.size() + 1 &&
+                incoming().parentIds.hasAll(existing().parentIds)
+              )
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'parentIds',
+              'parentEncouragement',
+              'latestMomentText',
+              'updatedAt'
+            ])
+          )
+        );
+    }
+
+    // Subcollection 2: /workspaces/{workspaceId}/moments/{momentId}
+    match /workspaces/{workspaceId}/moments/{momentId} {
+      allow get: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidId(momentId) &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        isWorkspaceOwnerOrLinkedParent(workspaceId);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidId(momentId) &&
+        isValidStudentMoment(incoming()) &&
+        incoming().workspaceId == workspaceId &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        isWorkspaceOwnerOrLinkedParent(workspaceId);
+    }
+
+    // Subcollection 3: /workspaces/{workspaceId}/files/{fileId}
+    match /workspaces/{workspaceId}/files/{fileId} {
+      allow get: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidId(fileId) &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        isWorkspaceOwnerOrLinkedParent(workspaceId);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidId(fileId) &&
+        isValidSyncedStudyFile(incoming()) &&
+        incoming().workspaceId == workspaceId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        isWorkspaceOwner(workspaceId);
+
+      allow update: if isVerifiedUser() &&
+        isValidId(workspaceId) &&
+        isValidId(fileId) &&
+        isValidSyncedStudyFile(incoming()) &&
+        incoming().workspaceId == existing().workspaceId &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name',
+          'subject',
+          'sizeLabel',
+          'contentPreview',
+          'notes',
+          'updatedAt'
+        ]) &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        isWorkspaceOwner(workspaceId);
+    }
+  }
+}
